@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimpleNotes</title>
+  <meta name="description" content="ADHD-friendly, offline-first notes with voice recording and AI transcription">
+  <meta name="theme-color" content="#EAE5D9">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SimpleNotes">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=Outfit:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['var(--font-family, Inter)', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            paper: {
+              bg:     '#EAE5D9',
+              text:   '#1A1918',
+              card:   '#F0EDE7',
+              border: '#D3CEC2',
+              dim:    '#8C887E',
+            },
+            ink: {
+              bg:     '#121212',
+              text:   '#eeeeee',
+              card:   '#1e1e1e',
+              border: '#333333',
+              dim:    '#777777',
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: var(--font-family, 'Inter'), system-ui, -apple-system, sans-serif;
+      font-size: var(--base-size, 16px);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    [contenteditable]:empty:before {
+      content: attr(placeholder);
+      color: #8C887E;
+      opacity: 0.5;
+      pointer-events: none;
+      display: block;
+    }
+    .dark [contenteditable]:empty:before { color: #75736E; opacity: 0.45; }
+    :is(button, input, [contenteditable]):focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 4px;
+    }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #D3CEC2; border-radius: 2px; }
+    .dark ::-webkit-scrollbar-thumb { background: #333333; }
+
+    .sn-checkbox {
+      -webkit-appearance: none;
+      appearance: none;
+      border: 1.5px solid #D3CEC2;
+      border-radius: 2px;
+      background: transparent;
+      transition: all 150ms ease;
+      position: relative;
+    }
+    .dark .sn-checkbox { border-color: #333333; }
+    .sn-checkbox:checked { background: #1A1918; border-color: #1A1918; }
+    .dark .sn-checkbox:checked { background: #eeeeee; border-color: #eeeeee; }
+    .sn-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 0px;
+      width: 5px; height: 9px;
+      border: solid #EAE5D9;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .dark .sn-checkbox:checked::after { border-color: #121212; }
+
+    @keyframes rec-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .recording-pulse { animation: rec-pulse 1.2s ease-in-out infinite; }
+
+    ::selection { background: #1A1918; color: #EAE5D9; }
+    .dark ::selection { background: #eeeeee; color: #121212; }
+
+    audio { filter: grayscale(1); opacity: 0.7; }
+    audio:hover { opacity: 1; }
+
+    /* Custom range slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #1A1918;
+      cursor: pointer;
+      margin-top: -6px;
+    }
+    .dark input[type=range]::-webkit-slider-thumb { background: #EAE5D9; }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: #D5D0C8;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track { background: #3B3835; }
+    
+    html, body {
+      overscroll-behavior-y: none;
+      overscroll-behavior: none;
+    }
+  </style>
+</head>
+
+<body class="overscroll-none bg-paper-bg dark:bg-ink-bg text-paper-text dark:text-ink-text min-h-screen transition-colors duration-200 selection:bg-paper-text selection:text-paper-bg dark:selection:bg-ink-text dark:selection:text-ink-bg">
+
+  <!-- APP CONTAINER -->
+  <div class="w-full max-w-md md:max-w-2xl lg:max-w-3xl mx-auto px-6 py-6 md:py-12 flex flex-col min-h-screen pb-44 relative">
+    
+    <!-- SIGN IN OVERLAY -->
+    <div id="auth-overlay" class="absolute inset-0 z-30 bg-paper-bg/95 dark:bg-ink-bg/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
+      <h2 class="text-xl md:text-2xl font-bold mb-4">Welcome to SimpleNotes</h2>
+      <p class="text-paper-dim dark:text-ink-dim mb-8 font-medium">Please sign in to securely access your cloud notes.</p>
+      <button id="overlay-auth-btn" class="px-6 py-3 border border-paper-border dark:border-ink-border rounded text-xs font-bold tracking-widest uppercase hover:bg-paper-text hover:text-paper-bg dark:hover:bg-ink-text dark:hover:text-ink-bg transition-colors">Sign In with Google</button>
+    </div>
+
+    <!-- HEADER — REC top-right -->
+    <header class="flex justify-between items-center mb-6 md:mb-12">
+      <div></div>
+      <div class="flex items-center gap-6">
+        <button
+          id="mic-btn"
+          class="min-h-11 min-w-11 text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-1.5 text-paper-dim dark:text-ink-dim hover:text-paper-text dark:hover:text-ink-text transition-colors"
+          aria-label="Record voice note"
+        >
+          <span id="mic-dot" class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-paper-text dark:bg-ink-text"></span>
+          <span id="mic-text">REC</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- NOTE CREATION -->
+    <main class="flex-1 flex flex-col gap-12">
+      <section class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <div
+            id="note-input"
+            contenteditable="true"
+            role="textbox"
+            aria-label="Write a note"
+            aria-multiline="true"
+            placeholder="Write or record..."
+            class="w-full note-merged-editor text-lg md:text-xl font-medium min-h-[3rem] leading-normal outline-none"
+          ></div>
+          <p id="save-status" class="text-xs text-paper-dim dark:text-ink-dim min-h-4 mt-2" role="status" aria-live="polite"></p>
+          <div id="legacy-recovery" class="hidden text-xs text-paper-dim dark:text-ink-dim mt-3">
+            Older unsynced notes are on this device.
+            <button id="legacy-import" class="min-h-11 underline underline-offset-4">Import to this account</button>
+          </div>
+        </div>
+        <!-- Audio preview (hidden until recording) -->
+        <div id="audio-preview" class="hidden"></div>
+      </section>
+
+      <!-- NOTES FEED -->
+      <section id="notes-list" class="flex flex-col gap-0">
+        <!-- Dynamically rendered by app.js -->
+      </section>
+    </main>
+  </div>
+
+  <!-- FIXED BOTTOM BAR WITH FADE OVERLAY -->
+  <div class="fixed bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-paper-bg via-paper-bg/95 to-transparent dark:from-ink-bg dark:via-ink-bg/95 pointer-events-none z-40"></div>
+
+  <div class="fixed inset-0 pointer-events-none z-50 flex flex-col items-center">
+    <div class="w-full max-w-md md:max-w-2xl lg:max-w-3xl h-full relative px-6">
+
+      <!-- Centered Menu Button: SIMPLENOTES -->
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-12 pointer-events-auto">
+        <button
+          id="menu-toggle-btn"
+          class="min-h-11 px-3 text-xs font-bold tracking-[0.2em] uppercase text-paper-dim dark:text-ink-dim hover:text-paper-text dark:hover:text-ink-text transition-colors select-none"
+        >
+          SimpleNotes
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MENU MODAL -->
+  <div
+    id="menu-modal"
+    class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center bg-paper-text/20 dark:bg-ink-bg/50 backdrop-blur-sm p-4 md:p-0"
+  >
+    <div class="modal-card bg-paper-card dark:bg-ink-card border border-paper-border dark:border-ink-border p-6 w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col gap-8 shadow-2xl rounded-t-2xl md:rounded-2xl transition-transform transform translate-y-full md:translate-y-0">
+      
+      <div class="flex justify-between items-center">
+        <h2 class="text-xs font-bold tracking-[0.25em] uppercase">Settings</h2>
+        <button id="menu-close-btn" class="text-paper-dim dark:text-ink-dim hover:text-paper-text dark:hover:text-ink-text">✕</button>
+      </div>
+
+      <!-- General Settings -->
+      <div class="flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold tracking-widest uppercase text-paper-dim dark:text-ink-dim">Account</span>
+          <button id="auth-btn" class="text-xs font-bold tracking-widest uppercase hover:opacity-70 transition-opacity">SIGN IN</button>
+        </div>
+        
+        <!-- SYNC indicator removed since we are cloud-only -->
+
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold tracking-widest uppercase text-paper-dim dark:text-ink-dim">Theme</span>
+          <button id="theme-toggle" class="text-xs font-bold tracking-widest uppercase hover:opacity-70 transition-opacity">
+            <span class="dark:hidden">DARK</span><span class="hidden dark:inline">WARM</span>
+          </button>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="gemini-api-key" class="text-xs font-bold tracking-widest uppercase text-paper-dim dark:text-ink-dim">Gemini API key</label>
+          <div class="flex gap-2">
+            <input id="gemini-api-key" type="password" autocomplete="off" placeholder="Enter key for voice notes" class="min-w-0 flex-1 bg-transparent border border-paper-border dark:border-ink-border rounded px-3 py-2 text-sm" />
+            <button id="gemini-key-save" class="min-h-11 px-3 border border-paper-border dark:border-ink-border rounded text-xs font-bold uppercase">Save</button>
+          </div>
+          <p id="gemini-key-status" class="text-xs text-paper-dim dark:text-ink-dim" aria-live="polite">Stored on this device only. Add it on each device you use.</p>
+        </div>
+      </div>
+
+      <hr class="border-paper-border dark:border-ink-border">
+
+      <!-- Typography Settings -->
+      <div class="flex flex-col gap-6">
+        
+        <!-- Live Preview -->
+        <div class="w-full min-h-[40px] flex items-center justify-center p-3 border border-paper-border dark:border-ink-border rounded text-center transition-all" style="font-family: var(--font-family, 'Inter'); font-size: var(--base-size, 16px);">
+          The quick brown fox jumps over the lazy dog.
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <label for="font-size-slider" class="text-xs font-bold tracking-widest uppercase text-paper-dim dark:text-ink-dim flex justify-between">
+            <span>Size</span>
+            <span id="font-size-display">16px</span>
+          </label>
+          <input type="range" id="font-size-slider" min="12" max="24" step="1" value="16">
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <span class="text-xs font-bold tracking-widest uppercase text-paper-dim dark:text-ink-dim">Font</span>
+          <div class="grid grid-cols-2 gap-2" id="font-selector">
+            <button data-font="Inter" class="font-btn active-font border border-paper-border dark:border-ink-border py-2 text-xs font-medium rounded hover:bg-paper-border/30 dark:hover:bg-ink-border/30" style="font-family: 'Inter'">Inter</button>
+            <button data-font="Outfit" class="font-btn border border-paper-border dark:border-ink-border py-2 text-xs font-medium rounded hover:bg-paper-border/30 dark:hover:bg-ink-border/30" style="font-family: 'Outfit'">Outfit</button>
+            <button data-font="Space Mono" class="font-btn border border-paper-border dark:border-ink-border py-2 text-xs font-medium rounded hover:bg-paper-border/30 dark:hover:bg-ink-border/30" style="font-family: 'Space Mono'">Space Mono</button>
+            <button data-font="Atkinson Hyperlegible" class="font-btn border border-paper-border dark:border-ink-border py-2 text-[11px] font-medium rounded hover:bg-paper-border/30 dark:hover:bg-ink-border/30" style="font-family: 'Atkinson Hyperlegible'">Hyperlegible</button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- REMINDER MODAL -->
+  <div
+    id="reminder-modal"
+    class="hidden fixed inset-0 z-50 flex items-center justify-center bg-paper-text/20 dark:bg-ink-bg/50 backdrop-blur-sm"
+  >
+    <div class="modal-card bg-paper-card dark:bg-ink-card border border-paper-border dark:border-ink-border p-6 w-full max-w-xs flex flex-col gap-5">
+      <h2 class="text-xs font-bold tracking-[0.25em] uppercase">Set Reminder</h2>
+
+      <input
+        id="reminder-datetime"
+        type="datetime-local"
+        class="w-full bg-transparent border border-paper-border dark:border-ink-border px-3 py-2 text-sm font-medium outline-none focus:border-paper-text dark:focus:border-ink-text transition-colors"
+      >
+
+      <div class="flex items-center gap-4 text-[10px] font-bold tracking-widest uppercase">
+        <button id="reminder-save" class="text-paper-text dark:text-ink-text hover:opacity-70 transition-opacity">SET</button>
+        <button id="reminder-clear" class="text-paper-dim dark:text-ink-dim hover:text-paper-text dark:hover:text-ink-text transition-colors">CLEAR</button>
+        <button id="reminder-cancel" class="text-paper-dim dark:text-ink-dim hover:text-paper-text dark:hover:text-ink-text transition-colors ml-auto">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
