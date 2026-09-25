@@ -152,6 +152,12 @@ function toggleMenu() {
   }
 }
 
+function openGeminiSettings() {
+  const modal = $('menu-modal');
+  if (modal?.classList.contains('hidden')) toggleMenu();
+  setTimeout(() => $('gemini-api-key')?.focus(), 20);
+}
+
 // ─── AUTH ─────────────────────────────────────────────────────────────────
 
 async function handleAuthChange(user) {
@@ -639,7 +645,8 @@ async function processRecording(blob) {
   const note = state.notes.find(n => n.id === state.activeDraftId);
   if (note) {
     try { await persistPendingNote(note); } catch (e) { /* Still attempt conversion. */ }
-    await retryTranscription(note, true);
+    if (hasGeminiKey()) await retryTranscription(note, true);
+    else setSaveStatus('Voice saved here · add Gemini key in Settings to transcribe');
   }
   state.recordingState = 'idle';
   updateRecordingUI();
@@ -647,6 +654,11 @@ async function processRecording(blob) {
 
 async function retryTranscription(note, inEditor = false) {
   if (!note?.audioBlob || transcribingIds.has(note.id)) return;
+  if (!hasGeminiKey()) {
+    setSaveStatus('Voice saved here · add Gemini key in Settings to transcribe');
+    openGeminiSettings();
+    return;
+  }
   const userId = state.user?.uid;
   transcribingIds.add(note.id);
   setSaveStatus('Converting voice to text…');
@@ -820,8 +832,12 @@ function showAudioPreview(blob) {
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.className = 'min-h-11 text-xs underline underline-offset-4 text-paper-dim dark:text-ink-dim';
-  retry.textContent = 'Retry transcription';
+  retry.textContent = hasGeminiKey() ? 'Retry transcription' : 'Add Gemini key to transcribe';
   retry.addEventListener('click', () => {
+    if (!hasGeminiKey()) {
+      openGeminiSettings();
+      return;
+    }
     const note = state.notes.find(n => n.id === state.activeDraftId);
     if (note) retryTranscription(note, true);
   });
@@ -1177,12 +1193,17 @@ function buildNoteCard(note) {
       const aiBtn = document.createElement('button');
        aiBtn.className = 'ml-4 min-h-11 text-xs underline underline-offset-4 text-paper-dim hover:text-paper-text dark:text-ink-dim dark:hover:text-ink-text transition-colors shrink-0';
        aiBtn.title = 'Convert voice to text with Gemini';
-       aiBtn.textContent = note.audioBlob ? 'Retry transcription' : 'Convert to text';
+       aiBtn.textContent = !hasGeminiKey() ? 'Add Gemini key to transcribe'
+         : note.audioBlob ? 'Retry transcription' : 'Convert to text';
       
        aiBtn.setAttribute('aria-label', aiBtn.textContent);
        aiBtn.onclick = async (e) => {
          e.preventDefault();
          e.stopPropagation();
+         if (!hasGeminiKey()) {
+           openGeminiSettings();
+           return;
+         }
          aiBtn.classList.add('animate-pulse');
          try {
            if (!blobRef && note.audioUrl) {
@@ -1369,6 +1390,7 @@ function setupEventListeners() {
     saveGeminiKey(key);
     input.value = '';
     if (keyStatus) keyStatus.textContent = 'Key saved on this device. Enter a new key to replace it.';
+    renderNotes();
     for (const note of state.notes) {
       if (note.audioBlob) retryTranscription(note, note.id === state.activeDraftId);
     }
