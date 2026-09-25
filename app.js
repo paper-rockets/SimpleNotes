@@ -156,6 +156,9 @@ function toggleMenu() {
 
 async function handleAuthChange(user) {
   const epoch = ++state.authEpoch;
+  clearTimeout(_autoSaveTimer);
+  for (const timer of Object.values(_editTimers)) clearTimeout(timer);
+  for (const id of Object.keys(_editTimers)) delete _editTimers[id];
   stopFirestoreListener();
   state.user = user || null;
   state.notes = [];
@@ -329,7 +332,7 @@ async function persistPendingNote(note) {
 }
 
 async function saveNoteToCloud(note) {
-  if (!state.user || !note || state.deletedIds.has(note.id)) return;
+  if (!state.user || !note || !state.notes.includes(note) || state.deletedIds.has(note.id)) return;
   const userId = state.user.uid;
   try {
     try { await persistPendingNote(note); }
