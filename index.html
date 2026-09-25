@@ -3,6 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
+  <script>
+    // Chrome "Desktop site" mode lays the page out ~1000px wide on a phone. Zoom back to phone size.
+    (function () {
+      function fit() {
+        var root = document.documentElement;
+        root.style.zoom = '';
+        var screenW = screen.width, pageW = window.innerWidth;
+        if (navigator.maxTouchPoints > 0 && screenW < 800 && pageW > screenW * 1.25) {
+          root.style.zoom = (pageW / screenW).toFixed(3);
+        }
+      }
+      fit();
+      window.addEventListener('resize', fit);
+    })();
+  </script>
   <title>SimpleNotes</title>
   <meta name="description" content="ADHD-friendly, offline-first notes with voice recording and AI transcription">
   <meta name="theme-color" content="#EAE5D9">

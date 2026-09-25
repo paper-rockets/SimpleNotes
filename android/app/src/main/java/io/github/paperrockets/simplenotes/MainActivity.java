@@ -1,78 +1,67 @@
 package io.github.paperrockets.simplenotes;
 
 import android.app.Activity;
-import android.graphics.Color;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import androidx.browser.customtabs.CustomTabsClient;
+import androidx.browser.customtabs.CustomTabsServiceConnection;
+import androidx.browser.customtabs.CustomTabsSession;
+import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 
 public class MainActivity extends Activity {
-    private static final String NOTES_URL = "https://paper-rockets.github.io/SimpleNotes/";
-    private WebView webView;
+    private static final String CHROME_PACKAGE = "com.android.chrome";
+    private static final Uri NOTES_URL = Uri.parse("https://paper-rockets.github.io/SimpleNotes/");
+    private CustomTabsServiceConnection connection;
+    private boolean bound;
 
-    @Override
-    public void onCreate(Bundle state) {
+    @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-
-        // Full-screen, no title bar
-        getWindow().setStatusBarColor(Color.parseColor("#EAE5D9"));
-        getWindow().getDecorView().setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        );
-
-        webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor("#EAE5D9"));
-
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-
-        // Force proper mobile scaling
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(false);
-        settings.setSupportZoom(false);
-        settings.setBuiltInZoomControls(false);
-        settings.setDisplayZoomControls(false);
-        settings.setTextZoom(100);
-
-        // Cache for offline use
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setDatabaseEnabled(true);
-
-        // Allow audio recording (for voice notes)
-        settings.setMediaPlaybackRequiresUserGesture(false);
-
-        webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
-
-        setContentView(webView);
-
-        // Load the app
         boolean record = getIntent().getBooleanExtra("record", false);
-        String url = record ? NOTES_URL + "?record=1" : NOTES_URL;
-        webView.loadUrl(url);
+        Uri target = record ? NOTES_URL.buildUpon().appendQueryParameter("record", "1").build() : NOTES_URL;
+        connection = new CustomTabsServiceConnection() {
+            @Override public void onCustomTabsServiceConnected(ComponentName name, CustomTabsClient client) {
+                client.warmup(0);
+                CustomTabsSession session = client.newSession(null);
+                if (session == null) {
+                    openBrowser(target);
+                    return;
+                }
+                try {
+                    new TrustedWebActivityIntentBuilder(target)
+                            .build(session)
+                            .launchTrustedWebActivity(MainActivity.this);
+                    finish();
+                } catch (ActivityNotFoundException error) {
+                    openBrowser(target);
+                }
+            }
+
+            @Override public void onServiceDisconnected(ComponentName name) {
+                bound = false;
+            }
+        };
+        bound = CustomTabsClient.bindCustomTabsService(this, CHROME_PACKAGE, connection);
+        if (!bound) openBrowser(target);
     }
 
-    @Override
-    public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
+    private void openBrowser(Uri target) {
+        Intent browser = new Intent(Intent.ACTION_VIEW, target);
+        browser.addCategory(Intent.CATEGORY_BROWSABLE);
+        try {
+            startActivity(browser);
+        } catch (ActivityNotFoundException missing) {
+            Toast.makeText(this, "Install a browser to open SimpleNotes", Toast.LENGTH_LONG).show();
         }
+        finish();
     }
 
-    @Override
-    protected void onDestroy() {
-        if (webView != null) {
-            webView.destroy();
-        }
+    @Override protected void onDestroy() {
+        if (bound) unbindService(connection);
         super.onDestroy();
     }
 }
