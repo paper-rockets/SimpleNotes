@@ -185,6 +185,7 @@ async function handleAuthChange(user) {
         _localStatus: r.status,
       }));
       renderNotes();
+      startWidgetRecording();
       scheduleActiveReminders();
       showLegacyRecovery();
       listenToFirestore(user.uid, (notes, metadata) => {
@@ -220,6 +221,14 @@ async function handleAuthChange(user) {
   } else {
     renderNotes();
   }
+}
+
+function startWidgetRecording() {
+  const url = new URL(location.href);
+  if (url.searchParams.get('record') !== '1' || !state.user) return;
+  url.searchParams.delete('record');
+  history.replaceState(null, '', url);
+  toggleRecording();
 }
 
 function updateAuthUI() {

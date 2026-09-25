@@ -15,3 +15,7 @@ Enter a Gemini API key in Settings on each device. The key is stored in that bro
 ## Status
 
 The source has passed JavaScript syntax, JSON, and Git whitespace checks. Browser sign-in, Gemini API, and two-device Firestore sync still require live testing before release.
+
+## Android
+
+Open `android/` in Android Studio to build the native launcher and home-screen widget. The 2×1 widget can resize to 2×2; tapping it opens the live site in Chrome and requests voice recording. Google sign-in and the Gemini key use Chrome's existing browser storage. This is a debug APK for direct installation, not a Play Store release. The widget is a launch control; recording and transcription occur in the web app.
