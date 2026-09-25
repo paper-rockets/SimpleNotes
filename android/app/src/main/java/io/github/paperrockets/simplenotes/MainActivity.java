@@ -1,35 +1,78 @@
 package io.github.paperrockets.simplenotes;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.net.Uri;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final Uri NOTES_URL = Uri.parse("https://paper-rockets.github.io/SimpleNotes/");
+    private static final String NOTES_URL = "https://paper-rockets.github.io/SimpleNotes/";
+    private WebView webView;
 
-    @Override public void onCreate(Bundle state) {
+    @Override
+    public void onCreate(Bundle state) {
         super.onCreate(state);
+
+        // Full-screen, no title bar
+        getWindow().setStatusBarColor(Color.parseColor("#EAE5D9"));
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        );
+
+        webView = new WebView(this);
+        webView.setBackgroundColor(Color.parseColor("#EAE5D9"));
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+
+        // Force proper mobile scaling
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(false);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+        settings.setTextZoom(100);
+
+        // Cache for offline use
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setDatabaseEnabled(true);
+
+        // Allow audio recording (for voice notes)
+        settings.setMediaPlaybackRequiresUserGesture(false);
+
+        webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient());
+
+        setContentView(webView);
+
+        // Load the app
         boolean record = getIntent().getBooleanExtra("record", false);
-        Uri target = record ? NOTES_URL.buildUpon().appendQueryParameter("record", "1").build() : NOTES_URL;
-        Intent browser = new Intent(Intent.ACTION_VIEW, target);
-        browser.addCategory(Intent.CATEGORY_BROWSABLE);
-        browser.setPackage("com.android.chrome");
-        Bundle customTab = new Bundle();
-        customTab.putBinder("android.support.customtabs.extra.SESSION", null);
-        browser.putExtras(customTab);
-        browser.putExtra("android.support.customtabs.extra.TOOLBAR_COLOR", 0xFFEAE5D9);
-        try {
-            startActivity(browser);
-        } catch (ActivityNotFoundException error) {
-            browser.setPackage(null);
-            try { startActivity(browser); }
-            catch (ActivityNotFoundException missing) {
-                Toast.makeText(this, "Install a browser to open SimpleNotes", Toast.LENGTH_LONG).show();
-            }
+        String url = record ? NOTES_URL + "?record=1" : NOTES_URL;
+        webView.loadUrl(url);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
         }
-        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (webView != null) {
+            webView.destroy();
+        }
+        super.onDestroy();
     }
 }

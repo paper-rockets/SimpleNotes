@@ -2,14 +2,14 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'io.github.paperrockets.simplenotes'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'io.github.paperrockets.simplenotes'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '1.0'
+        versionCode 3
+        versionName '1.2'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

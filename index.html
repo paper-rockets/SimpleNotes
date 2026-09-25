@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
   <title>SimpleNotes</title>
   <meta name="description" content="ADHD-friendly, offline-first notes with voice recording and AI transcription">
   <meta name="theme-color" content="#EAE5D9">
@@ -142,13 +142,20 @@
       overscroll-behavior-y: none;
       overscroll-behavior: none;
     }
+
+    /* Safe area for phones with notches/rounded corners */
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   </style>
 </head>
 
 <body class="overscroll-none bg-paper-bg dark:bg-ink-bg text-paper-text dark:text-ink-text min-h-screen transition-colors duration-200 selection:bg-paper-text selection:text-paper-bg dark:selection:bg-ink-text dark:selection:text-ink-bg">
 
   <!-- APP CONTAINER -->
-  <div class="w-full max-w-md md:max-w-2xl lg:max-w-3xl mx-auto px-6 py-6 md:py-12 flex flex-col min-h-screen pb-44 relative">
+  <div class="w-full max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-12 flex flex-col min-h-screen pb-44 relative">
     
     <!-- SIGN IN OVERLAY -->
     <div id="auth-overlay" class="absolute inset-0 z-30 bg-paper-bg/95 dark:bg-ink-bg/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
