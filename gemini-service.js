@@ -1,20 +1,33 @@
 const KEY_STORAGE = 'sn-gemini-api-key';
 const MODEL = 'gemini-2.5-flash';
 
-export function hasGeminiKey() {
-  return Boolean(localStorage.getItem(KEY_STORAGE));
+let memoryKey = '';
+
+function readKey() {
+  try { return localStorage.getItem(KEY_STORAGE) || memoryKey; } catch { return memoryKey; }
 }
 
+export function hasGeminiKey() {
+  return Boolean(readKey());
+}
+
+// Returns true when the key was written to persistent storage and reads back.
 export function saveGeminiKey(key) {
   const value = String(key || '').trim();
-  if (value) localStorage.setItem(KEY_STORAGE, value);
-  else localStorage.removeItem(KEY_STORAGE);
+  memoryKey = value;
+  try {
+    if (value) localStorage.setItem(KEY_STORAGE, value);
+    else localStorage.removeItem(KEY_STORAGE);
+    return localStorage.getItem(KEY_STORAGE) === (value || null);
+  } catch {
+    return false;
+  }
 }
 
 // The recording stays on the device until the server returns text.
 export async function transcribeAudio(blob) {
   if (!(blob instanceof Blob) || !blob.size) throw new Error('Recording is empty');
-  const key = localStorage.getItem(KEY_STORAGE);
+  const key = readKey();
   if (!key) throw new Error('Add your Gemini API key in Settings');
   if (blob.size > 7_000_000) throw new Error('Recording is too large to transcribe');
   const base64 = await new Promise((resolve, reject) => {
