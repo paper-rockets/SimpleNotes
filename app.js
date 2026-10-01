@@ -1368,6 +1368,7 @@ function setupEventListeners() {
   // Menu & Settings
   const keyStatus = $('gemini-key-status');
   if (keyStatus && hasGeminiKey()) keyStatus.textContent = 'Key saved on this device. Enter a new key to replace it.';
+  if (hasGeminiKey()) { const k = $('gemini-api-key'); if (k) k.placeholder = 'Key saved ✓ (enter a new one to replace)'; }
   $('gemini-key-save')?.addEventListener('click', () => {
     const input = $('gemini-api-key');
     const key = input?.value.trim();
@@ -1375,9 +1376,12 @@ function setupEventListeners() {
       if (keyStatus) keyStatus.textContent = 'Enter a key to save it.';
       return;
     }
-    saveGeminiKey(key);
+    const persisted = saveGeminiKey(key);
     input.value = '';
-    if (keyStatus) keyStatus.textContent = 'Key saved on this device. Enter a new key to replace it.';
+    input.placeholder = 'Key saved ✓ (enter a new one to replace)';
+    if (keyStatus) keyStatus.textContent = persisted
+      ? 'Key saved on this device. Enter a new key to replace it.'
+      : 'Key works for this session only — the browser blocked storage, so it will be lost when you close the app.';
     for (const note of state.notes) {
       if (note.audioBlob) retryTranscription(note, note.id === state.activeDraftId);
     }

@@ -1,5 +1,5 @@
 // SimpleNotes Service Worker
-const CACHE_NAME = 'simplenotes-v35';
+const CACHE_NAME = 'simplenotes-v36';
 const APP_SHELL = [
   './',
   './index.html',
